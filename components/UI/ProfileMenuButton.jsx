@@ -14,10 +14,12 @@ export default function ProfileMenuButton() {
     <View>
       <Pressable
         onPress={() => setOpen(true)}
-        className="h-10 w-10 rounded-full bg-white items-center justify-center border border-gray-200"
+        className={`h-11 w-11 rounded-full items-center justify-center overflow-hidden ${
+          currentUser?.photoUrl ? "" : "bg-white border border-gray-200"
+        }`}
       >
         {currentUser?.photoUrl ? (
-          <Image source={{ uri: currentUser.photoUrl }} className="h-10 w-10 rounded-full" />
+          <Image source={{ uri: currentUser.photoUrl }} className="h-full w-full rounded-full" />
         ) : (
           <FontAwesome name="user" size={20} color="#374151" />
         )}

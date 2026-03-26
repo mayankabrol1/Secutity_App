@@ -140,7 +140,9 @@ export default function DetailsScreen() {
                   });
                 }}
               >
-                <Text className="text-center font-semibold text-gray-800">Save to Library</Text>
+                <Text className="text-center font-semibold text-gray-800">
+                  {isCurrentlySaved ? "Saved to Library" : "Save to Library"}
+                </Text>
               </Pressable>
 
               {isCurrentlySaved ? (

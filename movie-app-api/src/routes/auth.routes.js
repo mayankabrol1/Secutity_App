@@ -51,8 +51,9 @@ async function issueTokens(user, req) {
 
 router.post("/google/callback", async (req, res) => {
   try {
-    const { idToken } = req.body || {};
+    const { idToken, intent } = req.body || {};
     if (!idToken) return res.status(400).json({ message: "Missing idToken" });
+    const authIntent = intent === "signup" ? "signup" : "signin";
     const audiences = getGoogleAudiences();
     if (audiences.length === 0) {
       return res.status(500).json({ message: "Google auth audience is not configured" });
@@ -82,6 +83,9 @@ router.post("/google/callback", async (req, res) => {
         profileComplete: false,
       });
     } else {
+      if (authIntent === "signup") {
+        return res.status(409).json({ message: "Account already exists. Please sign in." });
+      }
       if (
         user.providerUserId &&
         !String(user.providerUserId).startsWith("pwd:") &&

@@ -6,7 +6,10 @@ const USER_STORAGE_KEY = "movie_app_user_v1";
 const ACCESS_TOKEN_KEY = "movie_app_access_token_v1";
 const REFRESH_TOKEN_KEY = "movie_app_refresh_token_v1";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://100.25.116.43:3000";
+const EXTRA_REQUEST_HEADERS = API_BASE_URL.includes("loca.lt")
+  ? { "bypass-tunnel-reminder": "true" }
+  : {};
 const AppStateContext = createContext(null);
 
 function normalizeSavedItem(item) {
@@ -48,7 +51,7 @@ export function AppStateProvider({ children }) {
 
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...EXTRA_REQUEST_HEADERS },
       body: JSON.stringify({ refreshToken }),
     });
     if (!response.ok) return null;
@@ -69,6 +72,7 @@ export function AppStateProvider({ children }) {
     const request = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers: {
+        ...EXTRA_REQUEST_HEADERS,
         "Content-Type": "application/json",
         ...(options.headers || {}),
         Authorization: `Bearer ${accessToken}`,
@@ -83,6 +87,7 @@ export function AppStateProvider({ children }) {
     return fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers: {
+        ...EXTRA_REQUEST_HEADERS,
         "Content-Type": "application/json",
         ...(options.headers || {}),
         Authorization: `Bearer ${nextAccessToken}`,
@@ -109,6 +114,12 @@ export function AppStateProvider({ children }) {
     setCurrentUser(null);
     setSavedItems([]);
   }
+
+  useEffect(() => {
+    if (__DEV__) {
+      console.log("[API_BASE_URL]", API_BASE_URL);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -144,18 +155,18 @@ export function AppStateProvider({ children }) {
     loadSavedItems();
   }, [currentUser?.id]);
 
-  async function loginWithGoogle(idToken) {
+  async function authenticateWithGoogle(idToken, intent = "signin") {
     setAuthLoading(true);
     setAuthError("");
     try {
       const response = await fetch(`${API_BASE_URL}/auth/google/callback`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
+        headers: { "Content-Type": "application/json", ...EXTRA_REQUEST_HEADERS },
+        body: JSON.stringify({ idToken, intent }),
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data?.message || "Google sign-in failed");
+        throw new Error(data?.message || (intent === "signup" ? "Google sign-up failed" : "Google sign-in failed"));
       }
 
       await storeTokens(data.accessToken, data.refreshToken);
@@ -165,11 +176,21 @@ export function AppStateProvider({ children }) {
       setSavedItems(items);
       return data.user;
     } catch (error) {
-      setAuthError(error?.message || "Could not sign in");
+      setAuthError(
+        `${error?.message || (intent === "signup" ? "Could not create account" : "Could not sign in")} (API: ${API_BASE_URL})`
+      );
       throw error;
     } finally {
       setAuthLoading(false);
     }
+  }
+
+  async function loginWithGoogle(idToken) {
+    return authenticateWithGoogle(idToken, "signin");
+  }
+
+  async function signupWithGoogle(idToken) {
+    return authenticateWithGoogle(idToken, "signup");
   }
 
   async function loginWithPassword({ email, password }) {
@@ -178,7 +199,7 @@ export function AppStateProvider({ children }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...EXTRA_REQUEST_HEADERS },
         body: JSON.stringify({ email, password }),
       });
       const data = await response.json();
@@ -190,7 +211,7 @@ export function AppStateProvider({ children }) {
       setCurrentUser(data.user);
       return data.user;
     } catch (error) {
-      setAuthError(error?.message || "Could not sign in");
+      setAuthError(`${error?.message || "Could not sign in"} (API: ${API_BASE_URL})`);
       throw error;
     } finally {
       setAuthLoading(false);
@@ -203,7 +224,7 @@ export function AppStateProvider({ children }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...EXTRA_REQUEST_HEADERS },
         body: JSON.stringify({ name, email, password, avatarUrl, phone, country }),
       });
       const data = await response.json();
@@ -215,7 +236,7 @@ export function AppStateProvider({ children }) {
       setCurrentUser(data.user);
       return data.user;
     } catch (error) {
-      setAuthError(error?.message || "Could not create account");
+      setAuthError(`${error?.message || "Could not create account"} (API: ${API_BASE_URL})`);
       throw error;
     } finally {
       setAuthLoading(false);
@@ -244,7 +265,7 @@ export function AppStateProvider({ children }) {
       if (refreshToken) {
         await fetch(`${API_BASE_URL}/auth/logout`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...EXTRA_REQUEST_HEADERS },
           body: JSON.stringify({ refreshToken }),
         });
       }
@@ -314,6 +335,7 @@ export function AppStateProvider({ children }) {
       authLoading,
       authError,
       loginWithGoogle,
+      signupWithGoogle,
       loginWithPassword,
       signupWithPassword,
       completeProfile,

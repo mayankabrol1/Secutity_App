@@ -16,6 +16,7 @@ export default function LibraryScreen() {
     <View className="flex-1 bg-gray-50">
       <AppTopBar
         title="Saved Library"
+        showLibraryButton={false}
         onBack={() => {
           if (router.canGoBack()) router.back();
           else router.replace("/movies");
@@ -23,7 +24,7 @@ export default function LibraryScreen() {
       />
       <View className="px-5 py-4">
         <Text className="text-gray-700">
-          {currentUser.name}'s saved items ({savedItems.length})
+          
         </Text>
       </View>
 

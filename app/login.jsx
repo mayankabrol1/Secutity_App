@@ -2,7 +2,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { Redirect, useRouter } from "expo-router";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Text, View } from "react-native";
 import { useEffect, useMemo, useRef } from "react";
 
 import AppButton from "../components/UI/AppButton";
@@ -12,8 +12,9 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { currentUser, isReady, loginWithGoogle, authLoading, authError } = useAppState();
+  const { currentUser, isReady, loginWithGoogle, signupWithGoogle, authLoading, authError } = useAppState();
   const lastHandledTokenRef = useRef("");
+  const googleIntentRef = useRef("signin");
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || webClientId;
   const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || webClientId;
@@ -42,14 +43,22 @@ export default function LoginScreen() {
       if (lastHandledTokenRef.current === idToken) return;
       lastHandledTokenRef.current = idToken;
       try {
-        const user = await loginWithGoogle(idToken);
+        const authAction = googleIntentRef.current === "signup" ? signupWithGoogle : loginWithGoogle;
+        const user = await authAction(idToken);
         router.replace(user?.profileComplete ? "/movies" : "/complete-profile");
       } catch (error) {
-        // authError is handled by app-state.
+        if (googleIntentRef.current === "signup") {
+          Alert.alert("Sign up failed", error?.message || "Please try again.");
+        }
       }
     }
     handleResponse();
-  }, [response]);
+  }, [loginWithGoogle, response, router, signupWithGoogle]);
+
+  function onGooglePress(intent) {
+    googleIntentRef.current = intent;
+    promptAsync();
+  }
 
   if (!isReady) {
     return (
@@ -62,9 +71,12 @@ export default function LoginScreen() {
   if (currentUser) return <Redirect href="/movies" />;
 
   return (
-    <View className="flex-1 bg-gray-50 px-6 pt-14">
-      <Text className="text-3xl font-bold text-gray-900">Welcome to Movies App</Text>
-      <Text className="text-gray-600 mt-3 leading-6">
+    <View className="flex-1 bg-gray-60 px-6 pt-14">
+      <View className="items-center">
+        <Image source={require("../assets/login-logo.png")} className="h-40 w-40 mb-4 rounded-full" resizeMode="cover" />
+      </View>
+      <Text className="text-3xl font-bold text-gray-900 text-center">Welcome to Movies App</Text>
+      <Text className="text-lg text-gray-600 mt-3 mb-3 leading-6 text-center ">
         Sign in to save movies and TV shows to your account library.
       </Text>
 
@@ -81,13 +93,11 @@ export default function LoginScreen() {
           </View>
         </AppButton>
         <AppButton
-          className="bg-white border-gray-300 py-4"
-          onPress={() => {
-            promptAsync();
-          }}
+          className="bg-white border-gray-300 py-4 mb-3"
+          onPress={() => onGooglePress("signin")}
           disabled={!request || authLoading}
         >
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row items-center gap-2 ">
             <FontAwesome name="google" size={16} color="#111827" />
             <Text className="font-semibold text-gray-900">
               {authLoading ? "Signing in..." : "Sign in with Google"}
@@ -108,13 +118,11 @@ export default function LoginScreen() {
         </AppButton>
         <AppButton
           className="bg-cyan-500 border-cyan-500 py-4"
-          onPress={() => {
-            promptAsync();
-          }}
+          onPress={() => onGooglePress("signup")}
           disabled={!request || authLoading}
         >
           <View className="flex-row items-center gap-2">
-            <FontAwesome name="user-plus" size={16} color="#ffffff" />
+            <FontAwesome name="google" size={16} color="#ffffff" />
             <Text className="font-semibold text-white">{authLoading ? "Signing up..." : "Sign up with Google"}</Text>
           </View>
         </AppButton>
@@ -124,9 +132,9 @@ export default function LoginScreen() {
             Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in environment configuration.
           </Text>
         ) : null}
-        {!!debugRedirectUri ? (
+       {/*{!!debugRedirectUri ? (
           <Text className="text-gray-500 text-xs mt-2">Redirect URI: {debugRedirectUri}</Text>
-        ) : null}
+        ) : null}*/}
       </View>
     </View>
   );
