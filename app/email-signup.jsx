@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { Redirect, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, Image, ScrollView, Text, View } from "react-native";
@@ -43,12 +44,23 @@ export default function EmailSignupScreen() {
     if (result.canceled) return;
     const asset = result.assets?.[0];
     if (!asset?.uri) return;
-    if (!asset.base64) {
+    const longestSide = Math.max(asset.width || 0, asset.height || 0);
+    const targetWidth = longestSide > 512 ? 512 : asset.width || 512;
+    const manipulated = await ImageManipulator.manipulateAsync(
+      asset.uri,
+      [{ resize: { width: targetWidth } }],
+      {
+        compress: 0.5,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      }
+    );
+    if (!manipulated.base64) {
       Alert.alert("Image error", "Could not read the selected image. Please try another one.");
       return;
     }
-    setAvatarPreviewUri(asset.uri);
-    setAvatarDataUri(`data:${asset.mimeType || "image/jpeg"};base64,${asset.base64}`);
+    setAvatarPreviewUri(manipulated.uri);
+    setAvatarDataUri(`data:image/jpeg;base64,${manipulated.base64}`);
   }
 
   async function onSignup() {

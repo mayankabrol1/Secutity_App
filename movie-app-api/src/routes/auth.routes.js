@@ -174,7 +174,12 @@ router.post("/login", async (req, res) => {
     }
 
     const user = await User.findOne({ email: cleanEmail });
-    if (!user || !user.passwordHash) {
+    if (!user) {
+      return res.status(404).json({
+        message: "No account found for this email. Please sign up first.",
+      });
+    }
+    if (!user.passwordHash) {
       return res.status(404).json({
         message: "This email was used to sign up with Google. Please sign in with Google.",
       });
