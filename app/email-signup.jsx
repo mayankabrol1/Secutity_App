@@ -2,10 +2,11 @@ import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { Redirect, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Alert, Image, ScrollView, Text, View } from "react-native";
+import { Alert, Image, Text, View } from "react-native";
 
 import AppButton from "../components/UI/AppButton";
 import AppInput from "../components/UI/AppInput";
+import AppKeyboardView from "../components/UI/AppKeyboardView";
 import AppSelect from "../components/UI/AppSelect";
 import { COUNTRY_CODE_OPTIONS, COUNTRY_OPTIONS } from "./complete-profile";
 import { useAppState } from "../lib/app-state";
@@ -103,7 +104,10 @@ export default function EmailSignupScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 56, paddingBottom: 24 }}>
+    <AppKeyboardView
+      className="bg-gray-50 px-6 pt-14 pb-6"
+      contentContainerStyle={{ paddingBottom: 24 }}
+    >
       <Text className="text-3xl font-bold text-gray-900">Sign up with Email</Text>
       <Text className="text-gray-600 mt-3 leading-6">Create your account details below.</Text>
 
@@ -164,7 +168,7 @@ export default function EmailSignupScreen() {
           Back
         </AppButton>
       </View>
-    </ScrollView>
+    </AppKeyboardView>
   );
 }
 

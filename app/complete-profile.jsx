@@ -1,9 +1,10 @@
 import { Redirect, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Alert, Keyboard, Text, TouchableWithoutFeedback, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 
 import AppButton from "../components/UI/AppButton";
 import AppInput from "../components/UI/AppInput";
+import AppKeyboardView from "../components/UI/AppKeyboardView";
 import AppSelect from "../components/UI/AppSelect";
 import { useAppState } from "../lib/app-state";
 import { validateProfilePayload } from "../lib/profile-validation";
@@ -293,8 +294,7 @@ export default function CompleteProfileScreen() {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View className="flex-1 bg-white px-6 justify-center">
+    <AppKeyboardView className="bg-white px-6 justify-center">
         <Text className="text-3xl font-bold text-gray-900">Complete your profile</Text>
         <Text className="text-gray-600 mt-2 mb-8">
           Add your phone number and country to finish setting up your account.
@@ -343,7 +343,6 @@ export default function CompleteProfileScreen() {
         >
           Back
         </AppButton>
-      </View>
-    </TouchableWithoutFeedback>
+    </AppKeyboardView>
   );
 }

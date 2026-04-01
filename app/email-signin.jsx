@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Text, View } from "react-native";
 
 import AppButton from "../components/UI/AppButton";
 import AppInput from "../components/UI/AppInput";
+import AppKeyboardView from "../components/UI/AppKeyboardView";
 import { useAppState } from "../lib/app-state";
 
 export default function EmailSigninScreen() {
@@ -29,7 +30,7 @@ export default function EmailSigninScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50 px-6 pt-14">
+    <AppKeyboardView className="bg-gray-50 px-6 pt-14">
       <Text className="text-3xl font-bold text-gray-900">Sign in with Email</Text>
       <Text className="text-gray-600 mt-3 leading-6">Use your email and password to continue.</Text>
 
@@ -49,7 +50,7 @@ export default function EmailSigninScreen() {
           <ActivityIndicator size="small" color="#06b6d4" />
         </View>
       ) : null}
-    </View>
+    </AppKeyboardView>
   );
 }
 
