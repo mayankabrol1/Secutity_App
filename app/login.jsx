@@ -77,7 +77,7 @@ export default function LoginScreen() {
       </View>
       <Text className="text-3xl font-bold text-gray-900 text-center">Welcome to Movies App</Text>
       <Text className="text-lg text-gray-600 mt-3 mb-3 leading-6 text-center ">
-        Sign in to save movies and TV shows to your account library.
+      Sign in to discover, view, and save movies and TV shows to your library.
       </Text>
 
       <View className="mt-5">
