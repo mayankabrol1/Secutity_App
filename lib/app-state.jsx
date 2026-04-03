@@ -327,6 +327,51 @@ export function AppStateProvider({ children }) {
     setSavedItems((prev) => [normalized, ...prev]);
   }
 
+  async function saveToLibrary(item) {
+    if (!currentUser?.id) {
+      throw new Error("Please sign in to save items.");
+    }
+
+    const mediaType = item?.mediaType;
+    const itemId = String(item?.id || "");
+    if (!mediaType || !itemId) {
+      throw new Error("Invalid item details.");
+    }
+
+    if (isSaved(mediaType, itemId)) {
+      return { status: "already_saved" };
+    }
+
+    const payload = {
+      mediaType,
+      tmdbId: itemId,
+      title: item.title || "Untitled",
+      posterPath: item.posterPath || null,
+      releaseDate: item.date || item.releaseDate || "",
+    };
+
+    const response = await authenticatedFetch("/saved", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not save item.");
+    }
+    if (!data?.item) {
+      throw new Error("Could not save item.");
+    }
+
+    const normalized = normalizeSavedItem(data.item);
+    setSavedItems((prev) => {
+      const exists = prev.some(
+        (entry) => entry.mediaType === normalized.mediaType && String(entry.id) === String(normalized.id)
+      );
+      return exists ? prev : [normalized, ...prev];
+    });
+    return { status: "saved", item: normalized };
+  }
+
   const value = useMemo(
     () => ({
       isReady,
@@ -343,6 +388,7 @@ export function AppStateProvider({ children }) {
       deleteAccount,
       isSaved,
       toggleSaved,
+      saveToLibrary,
     }),
     [authError, authLoading, currentUser, isReady, savedItems]
   );

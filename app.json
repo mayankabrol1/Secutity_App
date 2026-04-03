@@ -18,6 +18,7 @@
       "bundleIdentifier": "com.andromeda156.movieapp",
       "icon": "./assets/app-icon.png",
       "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Allow Movie App to access your location to show region-relevant movie and TV listings.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSExceptionDomains": {
@@ -52,6 +53,12 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow Movie App to access your photos so you can choose a profile picture."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Movie App to access your location to show region-relevant movie and TV listings."
         }
       ]
     ]

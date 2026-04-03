@@ -14,6 +14,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { currentUser, isReady, loginWithGoogle, signupWithGoogle, authLoading, authError } = useAppState();
   const lastHandledTokenRef = useRef("");
+  const lastAuthErrorRef = useRef("");
   const googleIntentRef = useRef("signin");
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || webClientId;
@@ -47,13 +48,18 @@ export default function LoginScreen() {
         const user = await authAction(idToken);
         router.replace(user?.profileComplete ? "/movies" : "/complete-profile");
       } catch (error) {
-        if (googleIntentRef.current === "signup") {
-          Alert.alert("Sign up failed", error?.message || "Please try again.");
-        }
+        // Errors are surfaced through authError alert effect below.
       }
     }
     handleResponse();
   }, [loginWithGoogle, response, router, signupWithGoogle]);
+
+  useEffect(() => {
+    const message = String(authError || "").trim();
+    if (!message || message === lastAuthErrorRef.current) return;
+    lastAuthErrorRef.current = message;
+    Alert.alert("Authentication error", message);
+  }, [authError]);
 
   function onGooglePress(intent) {
     googleIntentRef.current = intent;
@@ -126,15 +132,6 @@ export default function LoginScreen() {
             <Text className="font-semibold text-white">{authLoading ? "Signing up..." : "Sign up with Google"}</Text>
           </View>
         </AppButton>
-       {/* {!!authError && <Text className="text-red-600 mt-2">{authError}</Text>}
-        {!webClientId ? (
-          <Text className="text-amber-600 mt-2">
-            Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in environment configuration.
-          </Text>
-        ) : null}
-       {/*{!!debugRedirectUri ? (
-          <Text className="text-gray-500 text-xs mt-2">Redirect URI: {debugRedirectUri}</Text>
-        ) : null}*/}
       </View>
     </View>
   );

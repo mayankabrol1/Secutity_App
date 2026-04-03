@@ -1,5 +1,6 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { Redirect, useRouter } from "expo-router";
+import * as Location from "expo-location";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Keyboard, Pressable, Text, View } from "react-native";
 
@@ -8,7 +9,7 @@ import AppSelect from "../../components/UI/AppSelect";
 import AppButton from "../../components/UI/AppButton";
 import AppInput from "../../components/UI/AppInput";
 import { useAppState } from "../../lib/app-state";
-import { fetchMovies, fetchSearch, fetchTv, getPosterUrl } from "../../lib/tmdb";
+import { fetchMovies, fetchSearch, fetchTv, getPosterUrl, getTmdbRegion } from "../../lib/tmdb";
 
 const TAB_KEYS = {
   movies: "movies",
@@ -25,7 +26,6 @@ const MOVIE_OPTIONS = [
 
 const TV_OPTIONS = [
   { label: "Airing Today", value: "airing_today" },
-  { label: "On The Air", value: "on_the_air" },
   { label: "Popular", value: "popular" },
   { label: "Top Rated", value: "top_rated" },
 ];
@@ -42,6 +42,15 @@ function getTitle(item) {
 
 function getDate(item) {
   return item?.release_date || item?.first_air_date || "";
+}
+
+function isTodayOrFuture(dateValue) {
+  if (!dateValue || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateValue))) return false;
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+    today.getDate()
+  ).padStart(2, "0")}`;
+  return String(dateValue) >= todayStr;
 }
 
 function getMediaTypeFromItem(activeTab, searchType, item) {
@@ -139,6 +148,7 @@ export default function MoviesAppScreen() {
   const [searchCompleted, setSearchCompleted] = useState(false);
   const [searchPageLoading, setSearchPageLoading] = useState(false);
   const searchRequestIdRef = useRef(0);
+  const browseRequestIdRef = useRef(0);
 
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -146,13 +156,16 @@ export default function MoviesAppScreen() {
   const [totalResults, setTotalResults] = useState(0);
   const [pageChanging] = useState(false);
 
- 
   const perPage = 10;
   const [pageIndex, setPageIndex] = useState(1);
+  const [region, setRegion] = useState(() => getTmdbRegion());
 
   const filteredResults = useMemo(() => {
+    if (activeTab === TAB_KEYS.movies && movieType === "upcoming") {
+      return results.filter((item) => isTodayOrFuture(getDate(item)));
+    }
     return results;
-  }, [activeTab, results, searchType]);
+  }, [activeTab, movieType, results, searchType]);
 
   const totalPages = Math.max(1, Math.ceil(totalResults / perPage));
   const pageResults = filteredResults;
@@ -173,39 +186,47 @@ export default function MoviesAppScreen() {
   }
 
   async function loadMovies(localPage = pageIndex) {
+    const browseRequestId = ++browseRequestIdRef.current;
     setLoading(true);
     setApiError("");
     try {
       const tmdbPage = Math.max(1, Math.ceil(localPage / 2));
-      const data = await fetchMovies(movieType, tmdbPage);
+      const data = await fetchMovies(movieType, tmdbPage, { region });
+      if (browseRequestId !== browseRequestIdRef.current) return;
       const all = Array.isArray(data?.results) ? data.results : [];
       const sliceStart = localPage % 2 === 1 ? 0 : perPage;
       setResults(all.slice(sliceStart, sliceStart + perPage));
       setTotalResults(Number(data?.total_results || 0));
     } catch (e) {
+      if (browseRequestId !== browseRequestIdRef.current) return;
       setApiError("Failed to load movies. Check your TMDB API key.");
       setResults([]);
       setTotalResults(0);
     } finally {
+      if (browseRequestId !== browseRequestIdRef.current) return;
       setLoading(false);
     }
   }
 
   async function loadTv(localPage = pageIndex) {
+    const browseRequestId = ++browseRequestIdRef.current;
     setLoading(true);
     setApiError("");
     try {
       const tmdbPage = Math.max(1, Math.ceil(localPage / 2));
-      const data = await fetchTv(tvType, tmdbPage);
+      const data = await fetchTv(tvType, tmdbPage, { region });
+      if (browseRequestId !== browseRequestIdRef.current) return;
       const all = Array.isArray(data?.results) ? data.results : [];
       const sliceStart = localPage % 2 === 1 ? 0 : perPage;
       setResults(all.slice(sliceStart, sliceStart + perPage));
       setTotalResults(Number(data?.total_results || 0));
     } catch (e) {
+      if (browseRequestId !== browseRequestIdRef.current) return;
       setApiError("Failed to load TV shows. Check your TMDB API key.");
       setResults([]);
       setTotalResults(0);
     } finally {
+      if (browseRequestId !== browseRequestIdRef.current) return;
       setLoading(false);
     }
   }
@@ -220,7 +241,7 @@ export default function MoviesAppScreen() {
     setSearchPageLoading(true);
     try {
       const tmdbPage = Math.max(1, Math.ceil(localPage / 2));
-      const data = await fetchSearch(searchType, q, tmdbPage);
+      const data = await fetchSearch(searchType, q, tmdbPage, { region });
       if (searchRequestId !== searchRequestIdRef.current) return;
       const all = Array.isArray(data?.results) ? data.results : [];
       const sliceStart = localPage % 2 === 1 ? 0 : perPage;
@@ -250,11 +271,44 @@ export default function MoviesAppScreen() {
         setSearchCompleted(false);
       }
     }
-  }, [activeTab, movieType, tvType, pageIndex]);
+  }, [activeTab, movieType, tvType, pageIndex, region]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function resolveRegionFromGps() {
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== "granted") return;
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const places = await Location.reverseGeocodeAsync({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        const countryCode = String(
+          places?.[0]?.isoCountryCode || places?.[0]?.countryCode || ""
+        )
+          .trim()
+          .toUpperCase();
+
+        if (!mounted || !/^[A-Z]{2}$/.test(countryCode) || countryCode === region) return;
+        setRegion(countryCode);
+      } catch (error) {
+        // Keep locale/env fallback region if GPS lookup fails.
+      }
+    }
+
+    resolveRegionFromGps();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (activeTab === TAB_KEYS.search && hasSearched && query.trim()) loadSearch();
-  }, [searchType, pageIndex]);
+  }, [searchType, pageIndex, region]);
 
   const showSearchPrompt = activeTab === TAB_KEYS.search && !hasSearched;
   const isSearchLoading =
@@ -390,7 +444,7 @@ export default function MoviesAppScreen() {
               </View>
             </View>
 
-            {!!searchError && <Text className="text-red-500 -mt-1">Movie/TV Show Name Is Required</Text>}
+            {!!searchError && <Text className="text-red-500 -mt-1">Movie/TV Show Name and Search Type are Required</Text>}
           </View>
         )}
       </View>
