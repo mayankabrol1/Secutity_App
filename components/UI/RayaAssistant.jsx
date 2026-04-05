@@ -420,13 +420,15 @@ export default function RayaAssistant() {
       ) : null}
 
       <Modal visible={open} animationType="fade" transparent onRequestClose={closeAssistant}>
-        <View className="flex-1 bg-black/35 items-end justify-end pl-10 pr-4 pb-6 pt-20">
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 18 : 0}
-            style={{ width: "100%", maxWidth: 390 }}
-          >
-            <View className="bg-white rounded-3xl border border-gray-200 h-[86%] min-h-[430px] max-h-[760px] overflow-hidden">
+        <View className="flex-1">
+          <Pressable className="absolute inset-0 bg-black/35" onPress={closeAssistant} />
+          <View pointerEvents="box-none" className="flex-1 items-end justify-end pl-10 pr-4 pb-6 pt-20">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
+              keyboardVerticalOffset={Platform.OS === "ios" ? 18 : 0}
+              style={{ width: "100%", maxWidth: 390 }}
+            >
+              <View className="bg-white rounded-3xl border border-gray-200 h-[86%] min-h-[430px] max-h-[760px] overflow-hidden">
               <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-200">
                 <View className="flex-row items-center gap-3">
                   <View className="h-7 w-7 rounded-full bg-slate-800 border border-slate-700 items-center justify-center">
@@ -480,6 +482,7 @@ export default function RayaAssistant() {
               </View>
             </View>
           </KeyboardAvoidingView>
+          </View>
         </View>
       </Modal>
     </>
