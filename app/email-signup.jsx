@@ -106,8 +106,8 @@ export default function EmailSignupScreen() {
 
   return (
     <AppKeyboardView
-      className="bg-gray-50 px-6 pt-14 pb-6"
-      contentContainerStyle={{ paddingBottom: 24 }}
+      className="bg-gray-50 px-6 pt-14 pb-12"
+      contentContainerStyle={{ paddingBottom: avatarPreviewUri ? 80 : 40 }}
     >
       <Text className="text-3xl font-bold text-gray-900">Sign up with Email</Text>
       <Text className="text-gray-600 mt-3 leading-6">Create your account details below.</Text>
