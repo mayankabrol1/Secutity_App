@@ -1,5 +1,7 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { Redirect, useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useMemo, useState } from "react";
 import { Alert, Image, Modal, Pressable, Text, View } from "react-native";
 
@@ -13,13 +15,14 @@ import { useAppState } from "../lib/app-state";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { currentUser, savedItems, logout, deleteAccount, completeProfile } = useAppState();
+  const { currentUser, savedItems, logout, deleteAccount, completeProfile, updateProfileAvatar } = useAppState();
   const [phoneModalOpen, setPhoneModalOpen] = useState(false);
   const [countryModalOpen, setCountryModalOpen] = useState(false);
   const [phoneCodeDraft, setPhoneCodeDraft] = useState("+1");
   const [phoneNumberDraft, setPhoneNumberDraft] = useState("");
   const [countryDraft, setCountryDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [avatarSaving, setAvatarSaving] = useState(false);
   const knownCountryCodes = useMemo(() => new Set(COUNTRY_CODE_OPTIONS.map((option) => option.value)), []);
   const knownCountries = useMemo(() => new Set(COUNTRY_OPTIONS.map((option) => option.value)), []);
 
@@ -100,6 +103,53 @@ export default function ProfileScreen() {
     }
   }
 
+  async function onPickProfileImage() {
+    if (avatarSaving) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Please allow photo library access to choose a profile picture.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      selectionLimit: 1,
+      quality: 0.3,
+      base64: true,
+    });
+    if (result.canceled) return;
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+
+    const longestSide = Math.max(asset.width || 0, asset.height || 0);
+    const targetWidth = longestSide > 512 ? 512 : asset.width || 512;
+    const manipulated = await ImageManipulator.manipulateAsync(
+      asset.uri,
+      [{ resize: { width: targetWidth } }],
+      {
+        compress: 0.5,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      }
+    );
+
+    if (!manipulated.base64) {
+      Alert.alert("Image error", "Could not read the selected image. Please try another one.");
+      return;
+    }
+
+    setAvatarSaving(true);
+    try {
+      await updateProfileAvatar(`data:image/jpeg;base64,${manipulated.base64}`);
+    } catch (error) {
+      Alert.alert("Could not update profile picture", error?.message || "Please try again.");
+    } finally {
+      setAvatarSaving(false);
+    }
+  }
+
   return (
     <View className="flex-1 bg-gray-50">
       <AppTopBar
@@ -112,15 +162,26 @@ export default function ProfileScreen() {
 
       <View className="px-6 pt-8">
         <View className="items-center">
-          {currentUser.photoUrl ? (
-            <Image source={{ uri: currentUser.photoUrl }} className="h-24 w-24 rounded-full" />
-          ) : (
-            <View className="h-24 w-24 rounded-full bg-gray-300 items-center justify-center">
-              <Text className="text-3xl font-semibold text-gray-700">{currentUser.name?.charAt(0) || "U"}</Text>
-            </View>
-          )}
+          <View className="relative">
+            {currentUser.photoUrl ? (
+              <Image source={{ uri: currentUser.photoUrl }} className="h-32 w-32 rounded-full" />
+            ) : (
+              <View className="h-32 w-32 rounded-full bg-gray-300 items-center justify-center">
+                <Text className="text-4xl font-semibold text-gray-700">{currentUser.name?.charAt(0) || "U"}</Text>
+              </View>
+            )}
+            <Pressable
+              onPress={onPickProfileImage}
+              disabled={avatarSaving}
+              className="absolute -top-1 -right-1 h-11 w-11 rounded-full bg-cyan-500 border-4 border-white items-center justify-center"
+              style={{ opacity: avatarSaving ? 0.7 : 1 }}
+            >
+              <FontAwesome name="pencil" size={16} color="#ffffff" />
+            </Pressable>
+          </View>
           <Text className="text-2xl font-bold text-gray-900 mt-4">{currentUser.name}</Text>
           <Text className="text-gray-600 mt-1">{currentUser.email}</Text>
+          {avatarSaving ? <Text className="text-sm text-gray-500 mt-2">Updating profile picture...</Text> : null}
         </View>
 
         <View className="bg-white border border-gray-200 rounded-xl p-4 mt-8">

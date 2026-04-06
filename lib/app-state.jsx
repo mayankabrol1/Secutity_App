@@ -259,6 +259,22 @@ export function AppStateProvider({ children }) {
     return data?.user || null;
   }
 
+  async function updateProfileAvatar(avatarUrl) {
+    const response = await authenticatedFetch("/me/avatar", {
+      method: "PATCH",
+      body: JSON.stringify({ avatarUrl }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.message || "Could not update profile picture");
+    }
+    if (data?.user) {
+      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+      setCurrentUser(data.user);
+    }
+    return data?.user || null;
+  }
+
   async function logout() {
     try {
       const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
@@ -384,6 +400,7 @@ export function AppStateProvider({ children }) {
       loginWithPassword,
       signupWithPassword,
       completeProfile,
+      updateProfileAvatar,
       logout,
       deleteAccount,
       isSaved,

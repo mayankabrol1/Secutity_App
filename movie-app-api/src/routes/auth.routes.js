@@ -78,6 +78,7 @@ router.post("/google/callback", async (req, res) => {
         email: payload.email.toLowerCase(),
         name: payload.name || "User",
         avatarUrl: payload.picture || "",
+        avatarSource: payload.picture ? "google" : "none",
         provider: "google",
         providerUserId: payload.sub,
         profileComplete: false,
@@ -95,7 +96,10 @@ router.post("/google/callback", async (req, res) => {
       }
       user.providerUserId = payload.sub;
       user.name = payload.name || user.name;
-      user.avatarUrl = payload.picture || user.avatarUrl;
+      if (user.avatarSource !== "custom") {
+        user.avatarUrl = payload.picture || user.avatarUrl;
+        if (payload.picture) user.avatarSource = "google";
+      }
       user.email = payload.email.toLowerCase();
       user.provider = user.passwordHash ? "mixed" : "google";
       await user.save();
@@ -136,6 +140,7 @@ router.post("/signup", async (req, res) => {
         email: cleanEmail,
         name: cleanName,
         avatarUrl: cleanAvatarUrl,
+        avatarSource: cleanAvatarUrl ? "custom" : "none",
         passwordHash,
         providerUserId: `pwd:${cleanEmail}`,
         phone: cleanPhone,
@@ -146,6 +151,7 @@ router.post("/signup", async (req, res) => {
     } else {
       user.name = cleanName || user.name;
       user.avatarUrl = cleanAvatarUrl || user.avatarUrl;
+      if (cleanAvatarUrl) user.avatarSource = "custom";
       user.passwordHash = passwordHash;
       user.phone = cleanPhone;
       user.country = cleanCountry;

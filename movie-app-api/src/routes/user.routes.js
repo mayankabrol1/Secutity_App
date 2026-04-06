@@ -45,20 +45,24 @@ function validateProfileInput({ phone, country }) {
   return { ok: true, cleanPhone, cleanCountry };
 }
 
+function buildUserResponse(user) {
+  return {
+    id: String(user._id),
+    email: user.email,
+    name: user.name,
+    photoUrl: user.avatarUrl,
+    provider: user.provider,
+    phone: user.phone || "",
+    country: user.country || "",
+    profileComplete: !!user.profileComplete,
+    createdAt: user.createdAt,
+  };
+}
+
 router.get("/me", authMiddleware, async (req, res) => {
   const user = req.user;
   return res.json({
-    user: {
-      id: String(user._id),
-      email: user.email,
-      name: user.name,
-      photoUrl: user.avatarUrl,
-      provider: user.provider,
-      phone: user.phone || "",
-      country: user.country || "",
-      profileComplete: !!user.profileComplete,
-      createdAt: user.createdAt,
-    },
+    user: buildUserResponse(user),
   });
 });
 
@@ -74,17 +78,25 @@ router.patch("/me/profile", authMiddleware, async (req, res) => {
   await req.user.save();
 
   return res.json({
-    user: {
-      id: String(req.user._id),
-      email: req.user.email,
-      name: req.user.name,
-      photoUrl: req.user.avatarUrl,
-      provider: req.user.provider,
-      phone: req.user.phone,
-      country: req.user.country,
-      profileComplete: true,
-      createdAt: req.user.createdAt,
-    },
+    user: buildUserResponse(req.user),
+  });
+});
+
+router.patch("/me/avatar", authMiddleware, async (req, res) => {
+  const cleanAvatarUrl = String(req.body?.avatarUrl || "").trim();
+  if (!cleanAvatarUrl) {
+    return res.status(400).json({ message: "Avatar image is required." });
+  }
+  if (!cleanAvatarUrl.startsWith("data:image/")) {
+    return res.status(400).json({ message: "Avatar must be a valid image data URI." });
+  }
+
+  req.user.avatarUrl = cleanAvatarUrl;
+  req.user.avatarSource = "custom";
+  await req.user.save();
+
+  return res.json({
+    user: buildUserResponse(req.user),
   });
 });
 
