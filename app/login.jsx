@@ -145,7 +145,7 @@ export default function LoginScreen() {
           <View className="flex-row items-center gap-2">
             <FontAwesome name="google" size={16} color="#111827" />
             <Text className="font-semibold text-gray-900">
-              {authLoading ? "Continuing..." : "Continue with Google"}
+              {authLoading ? "Signing In..." : "Continue with Google"}
             </Text>
           </View>
         </AppButton>
