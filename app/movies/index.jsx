@@ -137,8 +137,8 @@ function ResultRow({ item, onPressDetails, onToggleSave, saved }) {
 
 export default function MoviesAppScreen() {
   const router = useRouter();
-  const { currentUser, isReady, isSaved, toggleSaved } = useAppState();
-  const screenCacheKey = String(currentUser?.id || "guest");
+  const { currentUser, isReady, isSaved, toggleSaved, authSessionVersion } = useAppState();
+  const screenCacheKey = `${String(currentUser?.id || "guest")}:${authSessionVersion}`;
   const cachedState = MOVIES_SCREEN_CACHE.get(screenCacheKey);
 
   const [activeTab, setActiveTab] = useState(() => cachedState?.activeTab || TAB_KEYS.movies);

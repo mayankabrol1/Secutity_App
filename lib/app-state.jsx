@@ -51,6 +51,7 @@ export function AppStateProvider({ children }) {
   const [savedItems, setSavedItems] = useState([]);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [authSessionVersion, setAuthSessionVersion] = useState(0);
 
   function clearAuthError() {
     setAuthError("");
@@ -122,6 +123,7 @@ export function AppStateProvider({ children }) {
     await Promise.all([clearTokens(), AsyncStorage.removeItem(USER_STORAGE_KEY)]);
     setCurrentUser(null);
     setSavedItems([]);
+    setAuthSessionVersion((prev) => prev + 1);
   }
 
   useEffect(() => {
@@ -411,6 +413,7 @@ export function AppStateProvider({ children }) {
       savedItems,
       authLoading,
       authError,
+      authSessionVersion,
       clearAuthError,
       loginWithGoogle,
       signupWithGoogle,
@@ -425,7 +428,7 @@ export function AppStateProvider({ children }) {
       toggleSaved,
       saveToLibrary,
     }),
-    [authError, authLoading, currentUser, isReady, savedItems]
+    [authError, authLoading, authSessionVersion, currentUser, isReady, savedItems]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
