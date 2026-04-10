@@ -11,6 +11,8 @@ import AppInput from "../../components/UI/AppInput";
 import { useAppState } from "../../lib/app-state";
 import { fetchMovies, fetchSearch, fetchTv, getPosterUrl, getTmdbRegion } from "../../lib/tmdb";
 
+const MOVIES_SCREEN_CACHE = new Map();
+
 const TAB_KEYS = {
   movies: "movies",
   search: "search",
@@ -136,29 +138,31 @@ function ResultRow({ item, onPressDetails, onToggleSave, saved }) {
 export default function MoviesAppScreen() {
   const router = useRouter();
   const { currentUser, isReady, isSaved, toggleSaved } = useAppState();
+  const screenCacheKey = String(currentUser?.id || "guest");
+  const cachedState = MOVIES_SCREEN_CACHE.get(screenCacheKey);
 
-  const [activeTab, setActiveTab] = useState(TAB_KEYS.movies);
-  const [movieType, setMovieType] = useState("now_playing");
-  const [tvType, setTvType] = useState("popular");
+  const [activeTab, setActiveTab] = useState(() => cachedState?.activeTab || TAB_KEYS.movies);
+  const [movieType, setMovieType] = useState(() => cachedState?.movieType || "now_playing");
+  const [tvType, setTvType] = useState(() => cachedState?.tvType || "popular");
 
-  const [searchType, setSearchType] = useState("multi");
-  const [query, setQuery] = useState("");
-  const [hasSearched, setHasSearched] = useState(false);
+  const [searchType, setSearchType] = useState(() => cachedState?.searchType || "multi");
+  const [query, setQuery] = useState(() => cachedState?.query || "");
+  const [hasSearched, setHasSearched] = useState(() => cachedState?.hasSearched || false);
   const [searchError, setSearchError] = useState("");
-  const [searchCompleted, setSearchCompleted] = useState(false);
+  const [searchCompleted, setSearchCompleted] = useState(() => cachedState?.searchCompleted || false);
   const [searchPageLoading, setSearchPageLoading] = useState(false);
   const searchRequestIdRef = useRef(0);
   const browseRequestIdRef = useRef(0);
 
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
-  const [results, setResults] = useState([]);
-  const [totalResults, setTotalResults] = useState(0);
+  const [results, setResults] = useState(() => cachedState?.results || []);
+  const [totalResults, setTotalResults] = useState(() => cachedState?.totalResults || 0);
   const [pageChanging] = useState(false);
 
   const perPage = 10;
-  const [pageIndex, setPageIndex] = useState(1);
-  const [region, setRegion] = useState(() => getTmdbRegion());
+  const [pageIndex, setPageIndex] = useState(() => cachedState?.pageIndex || 1);
+  const [region, setRegion] = useState(() => cachedState?.region || getTmdbRegion());
 
   const filteredResults = useMemo(() => {
     if (activeTab === TAB_KEYS.movies && movieType === "upcoming") {
@@ -271,7 +275,7 @@ export default function MoviesAppScreen() {
         setSearchCompleted(false);
       }
     }
-  }, [activeTab, movieType, tvType, pageIndex, region]);
+  }, [activeTab, movieType, tvType, pageIndex, region, hasSearched, query]);
 
   useEffect(() => {
     let mounted = true;
@@ -308,11 +312,43 @@ export default function MoviesAppScreen() {
 
   useEffect(() => {
     if (activeTab === TAB_KEYS.search && hasSearched && query.trim()) loadSearch();
-  }, [searchType, pageIndex, region]);
+  }, [searchType]);
+
+  useEffect(() => {
+    MOVIES_SCREEN_CACHE.set(screenCacheKey, {
+      activeTab,
+      movieType,
+      tvType,
+      searchType,
+      query,
+      hasSearched,
+      searchCompleted,
+      results,
+      totalResults,
+      pageIndex,
+      region,
+    });
+  }, [
+    activeTab,
+    movieType,
+    tvType,
+    searchType,
+    query,
+    hasSearched,
+    searchCompleted,
+    results,
+    totalResults,
+    pageIndex,
+    region,
+    screenCacheKey,
+  ]);
 
   const showSearchPrompt = activeTab === TAB_KEYS.search && !hasSearched;
   const isSearchLoading =
     activeTab === TAB_KEYS.search && hasSearched && (loading || searchPageLoading || !searchCompleted);
+  const hasVisibleResults = pageResults.length > 0;
+  const showInitialLoader = !showSearchPrompt && (loading || isSearchLoading) && !hasVisibleResults;
+  const showInlineLoader = !showSearchPrompt && (loading || isSearchLoading) && hasVisibleResults;
 
   if (!isReady) {
     return (
@@ -459,60 +495,66 @@ export default function MoviesAppScreen() {
         <View className="flex-1 px-4 pt-24">
           <Text className="text-3xl font-semibold text-gray-800 text-center ">Please initiate a search</Text>
         </View>
-      ) : isSearchLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#06b6d4" />
-        </View>
-      ) : loading ? (
+      ) : showInitialLoader ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#06b6d4" />
         </View>
       ) : (
-        <FlatList
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
-          data={pageResults}
-          keyExtractor={(item, index) =>
-            activeTab === TAB_KEYS.search && searchType === "multi"
-              ? `${item.media_type}-${item.id}-${index}`
-              : String(item.id)
-          }
-          renderItem={({ item }) => {
-            const mediaType = getMediaTypeFromItem(activeTab, searchType, item);
-            return (
-              <ResultRow
-                item={item}
-                saved={isSaved(mediaType, item.id)}
-                onToggleSave={() =>
-                  toggleSaved({
-                    id: item.id,
-                    mediaType,
-                    title: getTitle(item),
-                    date: getDate(item),
-                    popularity: item?.popularity,
-                    posterPath: item?.poster_path,
-                  })
-                }
-                onPressDetails={() => {
-                  router.push({
-                    pathname: "/movies/details/[mediaType]/[id]",
-                    params: { mediaType, id: String(item.id), returnTo: "/movies" },
-                  });
-                }}
-              />
-            );
-          }}
-          ListEmptyComponent={() =>
-            isSearchLoading ? (
-              <View className="px-5 py-[130px] items-center">
-                <ActivityIndicator size="large" color="#06b6d4" />
+        <View className="flex-1">
+          {showInlineLoader ? (
+            <View className="px-5 pb-3">
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator size="small" color="#06b6d4" />
+                <Text className="text-sm text-gray-500">Refreshing results...</Text>
               </View>
-            ) : activeTab === TAB_KEYS.search && !hasSearched ? null : (
-              <View className="px-5 py-[130px] items-center">
-                <Text className="text-gray-500 text-2xl">No results found.</Text>
-              </View>
-            )
-          }
-        />
+            </View>
+          ) : null}
+          <FlatList
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+            data={pageResults}
+            keyExtractor={(item, index) =>
+              activeTab === TAB_KEYS.search && searchType === "multi"
+                ? `${item.media_type}-${item.id}-${index}`
+                : String(item.id)
+            }
+            renderItem={({ item }) => {
+              const mediaType = getMediaTypeFromItem(activeTab, searchType, item);
+              return (
+                <ResultRow
+                  item={item}
+                  saved={isSaved(mediaType, item.id)}
+                  onToggleSave={() =>
+                    toggleSaved({
+                      id: item.id,
+                      mediaType,
+                      title: getTitle(item),
+                      date: getDate(item),
+                      popularity: item?.popularity,
+                      posterPath: item?.poster_path,
+                    })
+                  }
+                  onPressDetails={() => {
+                    router.push({
+                      pathname: "/movies/details/[mediaType]/[id]",
+                      params: { mediaType, id: String(item.id), returnTo: "/movies" },
+                    });
+                  }}
+                />
+              );
+            }}
+            ListEmptyComponent={() =>
+              showInitialLoader ? (
+                <View className="px-5 py-[130px] items-center">
+                  <ActivityIndicator size="large" color="#06b6d4" />
+                </View>
+              ) : activeTab === TAB_KEYS.search && !hasSearched ? null : (
+                <View className="px-5 py-[130px] items-center">
+                  <Text className="text-gray-500 text-2xl">No results found.</Text>
+                </View>
+              )
+            }
+          />
+        </View>
       )}
 
       {totalPages > 1 && totalResults > 0 && !showSearchPrompt ? (

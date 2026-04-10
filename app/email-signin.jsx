@@ -6,6 +6,7 @@ import AppButton from "../components/UI/AppButton";
 import AppInput from "../components/UI/AppInput";
 import AppKeyboardView from "../components/UI/AppKeyboardView";
 import { useAppState } from "../lib/app-state";
+import { prefetchDefaultMovies } from "../lib/tmdb";
 
 export default function EmailSigninScreen() {
   const router = useRouter();
@@ -23,6 +24,9 @@ export default function EmailSigninScreen() {
     }
     try {
       const user = await loginWithPassword({ email: cleanEmail, password });
+      if (user?.profileComplete) {
+        prefetchDefaultMovies();
+      }
       router.replace(user?.profileComplete ? "/movies" : "/complete-profile");
     } catch (error) {
       clearAuthError();

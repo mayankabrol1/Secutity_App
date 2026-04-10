@@ -8,6 +8,7 @@ import AppKeyboardView from "../components/UI/AppKeyboardView";
 import AppSelect from "../components/UI/AppSelect";
 import { useAppState } from "../lib/app-state";
 import { validateProfilePayload } from "../lib/profile-validation";
+import { prefetchDefaultMovies } from "../lib/tmdb";
 
 export const COUNTRY_OPTIONS = [
   "Afghanistan",
@@ -285,6 +286,7 @@ export default function CompleteProfileScreen() {
     setSaving(true);
     try {
       await completeProfile({ phone: cleanPhone, country: cleanCountry });
+      prefetchDefaultMovies();
       router.replace("/movies");
     } catch (error) {
       Alert.alert("Could not save profile", error?.message || "Please try again.");

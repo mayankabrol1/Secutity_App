@@ -11,6 +11,7 @@ import AppSelect from "../components/UI/AppSelect";
 import { COUNTRY_CODE_OPTIONS, COUNTRY_OPTIONS } from "./complete-profile";
 import { useAppState } from "../lib/app-state";
 import { validateProfilePayload } from "../lib/profile-validation";
+import { prefetchDefaultMovies } from "../lib/tmdb";
 
 export default function EmailSignupScreen() {
   const router = useRouter();
@@ -97,6 +98,7 @@ export default function EmailSignupScreen() {
         phone,
         country: country.trim(),
       });
+      prefetchDefaultMovies();
       router.replace("/movies");
     } catch (error) {
       clearAuthError();

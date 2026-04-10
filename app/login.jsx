@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import AppButton from "../components/UI/AppButton";
 import { useAppState } from "../lib/app-state";
+import { prefetchDefaultMovies } from "../lib/tmdb";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -65,6 +66,9 @@ export default function LoginScreen() {
       lastHandledTokenRef.current = idToken;
       try {
         const user = await loginWithGoogle(idToken);
+        if (user?.profileComplete) {
+          prefetchDefaultMovies();
+        }
         router.replace(user?.profileComplete ? "/movies" : "/complete-profile");
       } catch (error) {
         // Errors are surfaced through authError alert effect below.
